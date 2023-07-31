@@ -18,6 +18,7 @@ class Result:
         self.int_path = []
         self.mem_states = []
         self.num_zeros = []
+        self.mem_used = []
         self.store_memstate = store_memstate
         self.store_fmap = store_fmap
 
@@ -26,7 +27,7 @@ class Result:
             for (i, path) in enumerate(self.position_paths):
                 for (j, pos) in enumerate(path):
                     intensity = self.int_path[i][j] if j < len(self.int_path[i]) else self.int_path[i][-1]
-                    f.write(f"{pos[0]},{pos[1]},{intensity}\n")          
+                    f.write(f"{pos[0]},{pos[1]},{intensity},{self.mem_used[i][j]}\n")          
                 f.write("-"*55 + "\n")
 
     def _write_state_path(self, fname, state_paths):
@@ -61,6 +62,7 @@ class Result:
         self.converged.append(result['terminated'])
         self.steps.append(result['steps'])
         self.int_path.append(result['int_path'])
+        self.mem_used.append(result['mem_used'])
         if self.store_memstate:
             self.mem_states.append(result['mem_state'])
         self.num_zeros.append(result['num_zeros'])

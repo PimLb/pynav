@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 
-from qnav import Agent, Environment, TabularQ, FMap, BacktrackingAgent
+from qnav import Agent, Environment, TabularQ, FMap, BacktrackingAgent, AdaSensing
 from qnav.stepsize import StepSize
 from utils import train_agent, get_preprocessed_data, write_info
 
@@ -46,7 +46,7 @@ qfun = TabularQ((3, 5, 4))
 #state.randint(low=40, high=1225), state.randint(low=0, high=280) 
 gen_bounds = np.asarray([[0, 280], [40, 1225]], dtype=np.int32).reshape(-1, 2)
 
-agent = BacktrackingAgent(env = env, 
+agent = AdaSensing(env = env, 
               fmap = fmap, 
               qfun= qfun, 
               memory_size = memory_size,
