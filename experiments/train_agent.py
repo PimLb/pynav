@@ -43,10 +43,9 @@ fmap = FMap(thresholds)
 
 qfun = TabularQ((3, 5, 4))
 
-#state.randint(low=40, high=1225), state.randint(low=0, high=280) 
 gen_bounds = np.asarray([[0, 280], [40, 1225]], dtype=np.int32).reshape(-1, 2)
 
-agent = AdaSensing(env = env, 
+agent = Agent(env = env, 
               fmap = fmap, 
               qfun= qfun, 
               memory_size = memory_size,
@@ -54,9 +53,7 @@ agent = AdaSensing(env = env,
               alpha = StepSize(mode = 'sqrt', init_value = 0.25, decay = 1e-2), 
               epsilon = StepSize(mode = 'sqrt', init_value = 0.99, decay = 1e-2),
               )
-#def write_info(agent, num_episodes, horizon, out_path):
 
 write_info(agent, num_episodes, horizon, out_path)
 
-#def train_agent(agent, num_episodes, horizon, gen_bounds, out_path, store_each = 1000):
 train_agent(agent, num_episodes, horizon, gen_bounds, out_path, store_each = 5000)

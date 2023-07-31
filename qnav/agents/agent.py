@@ -107,7 +107,7 @@ class Agent:
     def run_episode(self, horizon = None, clip_position : bool = True, test : bool = False):
         raw_obs, terminated = self.env.reset(self.memory_size)
         position_path = [self.env.init_position.copy()]
-        int_path = []
+        int_path = [None]
         mem_state = [self.memory.copy()]
         fmap_int_state = [self.fmap.intensities.copy()]
         fmap_thr_state = [self.fmap.thresholds[1].copy()]
