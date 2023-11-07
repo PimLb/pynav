@@ -18,8 +18,7 @@ class QAgent(Agent):
         avg_intensity_during_whiff = raw_obs[whiff].mean() if np.any(whiff) else 0
         features = {
             'intermittency' : intermittency, 
-            'avg_int' : avg_intensity_during_whiff,
-            'terminated' : self.env._is_near_enough(self.env.current_position)
+            'avg_int' : avg_intensity_during_whiff
         }
         return features
 

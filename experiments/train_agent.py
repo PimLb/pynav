@@ -22,7 +22,6 @@ data = np.swapaxes(data, 0, 2)
 thresholds = [
     np.array([0.1, 0.3, 0.6]), # intermittency
     np.zeros(4), # intensity
-    np.array([0.5])
 ]
 
 fmap = FMap(n_thr = n_thr, thresholds=thresholds)
@@ -37,7 +36,7 @@ env = Environment(
 
 agent = BCKSMTAgent(
     env = env,
-    q_function = TabularQ((4, 5, 2, 4), init_value=0.0),
+    q_function = TabularQ((4, 5, 4), init_value=0.0),
     fmap = fmap,
     memory = 20,
     gamma = 0.99999,
