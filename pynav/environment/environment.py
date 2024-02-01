@@ -19,7 +19,6 @@ class Environment:
                  data : np.ndarray, 
                  source_position : np.ndarray,
                  source_radius : float = 20, # source radius
-                 velocity : int = 10,
                  bounds : np.ndarray = None,
                  rewards : Tuple[float, float] = (1.0, -0.01), # reward at source and in other positions
                  seed : int = 1212121314,
@@ -27,13 +26,12 @@ class Environment:
         self.data = data
         self.rnd_state = np.random.RandomState(seed)
         self.bounds = bounds # [[min_x, max_x], [min_y, max_y]]
-        self.velocity = velocity
         if bounds is None:
             self.bounds = np.asarray([
                 [0, self.data.shape[0]],
                 [0, self.data.shape[1]],
             ])
-        self.source_position = source_position
+        #self.source_position = source_position
         self.source_radius = source_radius
         self.rewards = rewards
         self.t = 0
@@ -68,7 +66,7 @@ class Environment:
             new_pos[1] = self.bounds[1, 0] + delta_x
         return new_pos
     
-    def _get_value(self): 
+    def get_observations(self): 
         pos = self.current_position
         # if the agent is inside the data grid, 
         # returns the data point in its current position
@@ -80,8 +78,8 @@ class Environment:
         return data
 
                     
-    def play_action(self, action_idx : int, clip_position : bool = True):
-        self.current_position = self.current_position + self.velocity * COORDS[action_idx]
+    def play_action(self, action : np.ndarray, clip_position : bool = True):
+        self.current_position = self.current_position +  action
         if clip_position:
             self.current_position = self.clip_position(self.current_position)
         terminated = self.source_reached()
@@ -107,17 +105,17 @@ class Environment:
         return data
 
         
-    def reset(self, options : Dict):
-        ## options = {
-        #   init_position : np.array([y, x]),
-        #   init_time : t (integer >= 0),
-        #   sample_size : delta (integer > 0)
-        #}
-        self.init_position = options['init_position'] if 'init_position' in options else self.rnd_state.randint(self.bounds[:, 0], self.bounds[:, 1]) 
-        self.current_position = self.init_position.copy()
-        self.t = options['init_time'] if 'init_time' in options else self.rnd_state.randint(0, self.MAX_T, size=1)
-        sample_size = options['sample_size'] if 'sample_size' in options else 1
-        data = self._get_values(sample_size)
-        return data
+    # def reset(self, options : Dict):
+    #     ## options = {
+    #     #   init_position : np.array([y, x]),
+    #     #   init_time : t (integer >= 0),
+    #     #   sample_size : delta (integer > 0)
+    #     #}
+    #     self.init_position = options['init_position'] if 'init_position' in options else self.rnd_state.randint(self.bounds[:, 0], self.bounds[:, 1]) 
+    #     self.current_position = self.init_position.copy()
+    #     self.t = options['init_time'] if 'init_time' in options else self.rnd_state.randint(0, self.MAX_T, size=1)
+    #     sample_size = options['sample_size'] if 'sample_size' in options else 1
+    #     data = self._get_values(sample_size)
+    #     return data
         
         
