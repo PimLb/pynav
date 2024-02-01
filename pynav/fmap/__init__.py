@@ -1,7 +1,5 @@
-from pynav.fmap.fmap import FixedDiscretization, FMap#, TBFMap
+from pynav.fmap.fmap import FeatureMap
 
 __all__ = (
-    'FMap',
-    'FixedDiscretization',
- #   'TBFMap'
+    'FeatureMap',
 )

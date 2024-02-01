@@ -1,65 +1,56 @@
 import numpy as np
 
+from typing import Tuple, Dict
+
 from pynav.utils import default_reward
 
 COORDS = {
-    0 : np.asarray([ 1, 0], dtype=np.int32), # right
-    1 : np.asarray([-1, 0], dtype=np.int32), # left
-    2 : np.asarray([0,  1], dtype=np.int32), # up
-    3 : np.asarray([0, -1], dtype=np.int32), # down
+    0 : np.asarray([ 1, 0], dtype=np.int32), 
+    1 : np.asarray([-1, 0], dtype=np.int32), 
+    2 : np.asarray([0,  1], dtype=np.int32), 
+    3 : np.asarray([0, -1], dtype=np.int32), 
 }
-
-# INVERSE_ACTION = 4
-# SAME_ACTION = 5
-# LO_ACTION = 6 # Left orthogonal
-# RO_ACTION = 7 # Right othogonal
 
 INV_ACTIONS = [1, 0, 3, 2]
 
 class Environment:
     
     def __init__(self, 
-                 data, 
-                 init_position, 
-                 terminal_position,
-                 reward_function = default_reward,
-                 velocity = 10,
-                 eps = (20, 20),
-                 n_thr = 3e-6,
+                 data : np.ndarray, 
+                 source_position : np.ndarray,
+                 source_radius : float = 20, # source radius
+                 velocity : int = 10,
                  bounds : np.ndarray = None,
-                 seed : int = 1212,
-                 random_time : bool = False
+                 rewards : Tuple[float, float] = (1.0, -0.01), # reward at source and in other positions
+                 seed : int = 1212121314,
                  ):
         self.data = data
         self.rnd_state = np.random.RandomState(seed)
         self.bounds = bounds # [[min_x, max_x], [min_y, max_y]]
         self.velocity = velocity
-        self.n_thr = n_thr
-        self.random_time = random_time
         if bounds is None:
             self.bounds = np.asarray([
                 [0, self.data.shape[0]],
                 [0, self.data.shape[1]],
             ])
-        self.init_position = init_position
-        self.current_position = init_position.copy()
-        self.terminal_position = terminal_position
-        self.reward_function = reward_function
-        self.prev_action = None
-        self.eps = eps
-        self.lb = 0
-        self.ub = 0
+        self.source_position = source_position
+        self.source_radius = source_radius
+        self.rewards = rewards
         self.t = 0
-        self.MAX_T = self.data.shape[2] 
+        self.iters = 0
+        self.MAX_T = self.data.shape[0] 
                 
     def _is_in_bounds(self, pos):
         return self.bounds[0, 0] <= pos[0] < self.bounds[0, 1] and self.bounds[1, 0] <= pos[1] < self.bounds[1, 1]
 
-    def _is_in_discretization(self, pos):
+    def _is_in_domain(self, pos):
         return 0 <= pos[0] < self.data.shape[0] and 0 <= pos[1] < self.data.shape[1]
 
     def _is_near_enough(self, pos):
-        return (abs(pos[0] - self.terminal_position[0]) <= self.eps[0]) and abs(pos[1] - self.terminal_position[1]) <= self.eps[1]
+        return np.linalg.norm(pos - self.source_position) <= self.source_radius
+
+    def source_reached(self):
+        return np.linalg.norm(self.current_position - self.source_position) <= self.source_radius
         
     def clip_position(self, pos):
         new_pos = pos.copy()
@@ -76,73 +67,57 @@ class Environment:
             delta_x = pos[1] - self.bounds[1, 1]
             new_pos[1] = self.bounds[1, 0] + delta_x
         return new_pos
-            
-    def get_action(self, action_idx : int):
-        # if (action_idx == INVERSE_ACTION or action_idx == SAME_ACTION) and self.prev_action is None:
-        #     idx = self.rnd_state.choice(4)
-        #     return COORDS[idx]
-        # elif action_idx == INVERSE_ACTION:
-        #     return COORDS[INV_ACTIONS[self.prev_action]]
-        # elif action_idx == SAME_ACTION:
-        #     return COORDS[self.prev_action]
-        return COORDS[action_idx]
+    
+    def _get_value(self): 
+        pos = self.current_position
+        # if the agent is inside the data grid, 
+        # returns the data point in its current position
+        # otherwise, it returns 0
+        data = self.data[self.t : self.t + 1, pos[0], pos[1]] if self._is_in_domain(self.current_position) else np.zeros(1, dtype=np.float64)
+        self.t += 1
+        if self.t >= self.MAX_T:
+            self.t = 0        
+        return data
 
-        
-        
+                    
     def play_action(self, action_idx : int, clip_position : bool = True):
-        v = self.get_action(action_idx = action_idx)
-        self.current_position = self.current_position + self.velocity * v
+        self.current_position = self.current_position + self.velocity * COORDS[action_idx]
         if clip_position:
             self.current_position = self.clip_position(self.current_position)
-        return self._get_value()
+        terminated = self.source_reached()
+        reward = self.rewards[0] if terminated else self.rewards[1]
+        return self._get_value(), reward, terminated
 
-    def step(self, action, clip_position : bool = False): 
-        raw_obs = self.play_action(action, clip_position)
-#        if action != INVERSE_ACTION and action !=SAME_ACTION:
-        self.prev_action = action
-
-        terminated = self._is_near_enough(self.current_position)
-        reward = self.reward_function(self.t, raw_obs, terminated, self) #1.0 if terminated else 0.0 
-        return raw_obs, reward, terminated
-
-    def _get_value(self): 
-        '''get num_obs values in current position'''
-        pos = self.current_position
-        if self._is_in_discretization(self.current_position):
-            data = self.data[pos[0], pos[1], self.lb : self.lb + 1]
-        else:
-            data = np.full(1, 0.0, dtype=np.float64) # if agent is out of bounds, return zeros
-        self.lb += 1
-        if self.lb >= self.MAX_T:
-            self.lb = 0        
-        return data
         
     def _get_values(self, num_values):
-        if self._is_in_discretization(self.current_position):
-            if self.lb + num_values > self.MAX_T:
-                delta = self.lb + num_values - self.MAX_T
-                d1 = self.data[self.current_position[0], self.current_position[1], self.lb : self.MAX_T]
-                d2 = self.data[self.current_position[0], self.current_position[1], : delta]
+        pos = self.current_position
+        if self._is_in_domain(pos):
+            if self.t + num_values > self.MAX_T:
+                delta = self.t + num_values - self.MAX_T
+                d1 = self.data[self.t :self.MAX_T, pos[0], pos[1]]
+                d2 = self.data[: delta, pos[0], pos[1]]
                 data = np.concatenate((d1, d2))
-                self.lb = delta
+                self.t = delta
             else:
-                data = self.data[self.current_position[0], self.current_position[1], self.lb : self.lb + num_values]
-                self.lb = self.lb + num_values
+                data = self.data[self.t : self.t + num_values, pos[0], pos[1]]
+                self.t = self.t + num_values
         else:
             data = np.full(num_values, 0.0, dtype=np.float64) # if agent is out of bounds, return zeros
-            self.lb = self.lb + num_values
+            self.t = (self.t + num_values) % self.MAX_T
         return data
+
         
-    def reset(self, num_obs : int):
+    def reset(self, options : Dict):
+        ## options = {
+        #   init_position : np.array([y, x]),
+        #   init_time : t (integer >= 0),
+        #   sample_size : delta (integer > 0)
+        #}
+        self.init_position = options['init_position'] if 'init_position' in options else self.rnd_state.randint(self.bounds[:, 0], self.bounds[:, 1]) 
         self.current_position = self.init_position.copy()
-        self.lb = 0
-        if self.random_time:
-            self.lb = self.rnd_state.randint(0, high=self.MAX_T, size=1)[0]
-        self.prev_action = None
-        # if not self._is_in_discretization(self.current_position):
-        #     return np.zeros(num_obs),False
-        data = self._get_values(num_obs)
-#        data = self.data[self.current_position[0], self.current_position[1], :num_obs]
-        return data, self._is_near_enough(self.current_position)
+        self.t = options['init_time'] if 'init_time' in options else self.rnd_state.randint(0, self.MAX_T, size=1)
+        sample_size = options['sample_size'] if 'sample_size' in options else 1
+        data = self._get_values(sample_size)
+        return data
         
         
