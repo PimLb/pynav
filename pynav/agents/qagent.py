@@ -31,6 +31,10 @@ class QAgent:
         self.learning_rate = learning_rate
         self.eps_greedy = eps_greedy
         self.current_state = 0
+        self.memory_length = memory_size
+        
+    def set_memory(self, memory_length):
+        self.memory_length = memory_length
         
     def store_q(self, fname):
         np.save("{}/{}".format(self.out_dir, fname), self.Q, allow_pickle=True)
@@ -41,7 +45,7 @@ class QAgent:
     def update_state(self, raw_obs):
         obs = int(raw_obs > self.s_thr)
         self.memory = np.concatenate((self.memory[1:], [obs]))
-        if np.all(self.memory == 0.0):        
+        if np.all(self.memory[-self.memory_length:] == 0.0):        
             self.current_state = self.current_state + 1
             if self.current_state >= self.time_discretization_size:
                 self.current_state = 1
