@@ -1,5 +1,6 @@
-import os
+import tqdm
 import numpy as np
+
 
 
 class QAgent:
@@ -12,8 +13,8 @@ class QAgent:
                  eps_greedy = lambda t : 0.3,
                  gamma : float = 0.99,
                  learning_rate = lambda t : 0.25,
-                 conv_params = (100, 1e-5),
                  s_thr : float = 3e-6,
+                 adaptive_thr  = -np.inf, 
                  seed : int = 12131415,
                  out_dir : str = "./"
                 ):
@@ -24,9 +25,10 @@ class QAgent:
         self.number_of_actions = number_of_actions
         self.time_discretization_size = time_discretization_size
         self.Q = np.full((time_discretization_size, number_of_actions), q_init_value, dtype=np.float32)
-        self.conv_params = conv_params
+        self.adaptive_thr = adaptive_thr
         self.out_dir = out_dir
-        self.num_episode = 0
+        self.k = 0
+        self.num_episodes = 0
         self.rnd_state = np.random.RandomState(seed)
         self.learning_rate = learning_rate
         self.eps_greedy = eps_greedy
@@ -43,9 +45,10 @@ class QAgent:
         self.Q = np.load(qpath, allow_pickle=True)
 
     def update_state(self, raw_obs):
-        obs = int(raw_obs > self.s_thr)
-        self.memory = np.concatenate((self.memory[1:], [obs]))
-        if np.all(self.memory[-self.memory_length:] == 0.0):        
+        self.memory = np.concatenate((self.memory[1:], raw_obs))
+        s_thr = max(self.adaptive_thr * self.memory[-self.memory_length:].mean(), self.s_thr)
+        bin_memory = self.memory[-self.memory_length:] > s_thr
+        if np.all(bin_memory == 0.0):        
             self.current_state = self.current_state + 1
             if self.current_state >= self.time_discretization_size:
                 self.current_state = 1
@@ -53,19 +56,22 @@ class QAgent:
             self.current_state = 0
         return self.current_state
 
-    def select_action(self):
-        if self.rnd_state.rand() < self.eps_greedy(self.num_episode):
+    def select_action(self, deterministic = False):
+        if not deterministic and self.rnd_state.rand() < self.eps_greedy(self.num_episodes):
             return self.rnd_state.choice(self.number_of_actions, 1)[0]
         return np.argmax(self.Q[self.current_state])
 
-    def update_q(self, trace):
-        # trace =[(s, a, s', r)]
-        alpha = self.learning_rate(self.num_episode)
-        for (s, a, s_prime, r) in trace:
-            self.Q[s, a] = (1 - alpha) * self.Q[s, a] + alpha * (r + self.gamma * np.max(self.Q[s_prime]))
-        self.num_episode += 1
+    def update_q(self, s, a, s_prime, r):
+        alpha = self.learning_rate(self.num_episodes)
+        self.Q[s, a] = (1 - alpha) * self.Q[s, a] + alpha * (r + self.gamma * np.max(self.Q[s_prime]))
+          
+          
+    # def test(self, env, init_positions, verbose = False):
+    #     results = {}
+    #     iterator = tqdm(init_positions)
+        
           
     def reset(self):
         self.memory = np.zeros(self.memory_size)
         self.current_state = 0
-        
+        self.memory_length = self.memory_size
