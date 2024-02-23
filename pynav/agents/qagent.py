@@ -6,7 +6,7 @@ import numpy as np
 class QAgent:
     
     def __init__(self, 
-                 number_of_actions : int = 4,
+                 number_of_actions,
                  time_discretization_size : int = 30,
                  memory_size : int = 1,
                  q_init_value : float = 0.0,
@@ -24,7 +24,7 @@ class QAgent:
         self.memory = np.zeros(memory_size)
         self.number_of_actions = number_of_actions
         self.time_discretization_size = time_discretization_size
-        self.Q = np.full((time_discretization_size, number_of_actions), q_init_value, dtype=np.float32)
+        self.Q = np.full((time_discretization_size, self.number_of_actions), q_init_value, dtype=np.float32)
         self.adaptive_thr = adaptive_thr
         self.out_dir = out_dir
         self.k = 0
@@ -64,6 +64,16 @@ class QAgent:
     def update_q(self, s, a, s_prime, r):
         alpha = self.learning_rate(self.num_episodes)
         self.Q[s, a] = (1 - alpha) * self.Q[s, a] + alpha * (r + self.gamma * np.max(self.Q[s_prime]))
+          
+    
+    # def _perform_step(self, env, time_idx, s, deterministic = False):
+    #     a = self.select_action(deterministic=False)
+    #     pos, r, terminated = env.make_move(pos, self.actions[a])
+    #     time_idx = (time_idx + 1) % env.MAX_T
+    #     obs = env.get_observation(pos, time_idx)
+    #     s_prime = self.update_state(obs)
+
+
           
           
     # def test(self, env, init_positions, verbose = False):
