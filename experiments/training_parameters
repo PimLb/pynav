@@ -1,0 +1,7 @@
+# CONFIGURATION FOR BOTH AGENTS
+
+horizon = 500 
+gamma = 0.998 
+num_episodes = 3000001
+eps_init, eps_end, eps_decay = 1.0, 0.0001, 2500000 
+alpha_init, alpha_end, alpha_decay = 0.1, 0.0001, 2500000
