@@ -31,6 +31,23 @@ class Environment:
         distance_to_border = max(0, manhattan_distance - self.source_radius)
         return np.ceil(distance_to_border)
 
+    def compute_tb(self, pos, s_thr):
+        if not self._is_in_domain(pos):
+            return np.inf
+        whiffs = self.data[:, pos[0], pos[1]] > s_thr
+        idx = np.argmax(whiffs)
+        blanks = []
+        if whiffs[idx] == 0:
+            return np.inf
+        tb = 0
+        for i in range(idx, whiffs.shape[0]):
+            if not whiffs[i]:
+                tb += 1
+            else:
+                if tb > 0:
+                    blanks.append(tb)
+                tb = 0
+        return np.mean(blanks) if len(blanks) > 0 else 0.0
         
     def get_observation(self, pos, t): 
         # if the agent is inside the data grid, 

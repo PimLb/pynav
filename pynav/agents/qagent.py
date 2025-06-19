@@ -1,4 +1,3 @@
-import tqdm
 import numpy as np
 
 
@@ -65,7 +64,7 @@ class QAgent:
 
 class TwoQAgent(QAgent):
     
-    def __init__(self, horizon, tau=1, eps_greedy=lambda t: 0.3, gamma: float = 0.99, learning_rate=lambda t: 0.25, s_thr: float = 0.000003, seed: int = 12131415, out_dir: str = "./"):
+    def __init__(self, horizon, tau=1, eps_greedy=lambda t: 0.3, gamma: float = 0.99, learning_rate=lambda t: 0.25, s_thr: float = 0.000003, seed: int = 12131415, use_right_Q = False, out_dir: str = "./"):
         self.s_thr = s_thr
         self.gamma = gamma
         self.horizon = horizon
@@ -80,6 +79,7 @@ class TwoQAgent(QAgent):
         self.current_state = 0
         self.current_blank = 0
         self.tau = tau
+        self.use_right_Q = use_right_Q
     
     
     def update_state(self, raw_obs):
@@ -87,7 +87,8 @@ class TwoQAgent(QAgent):
             return -1.0
         if raw_obs >= self.s_thr:
     #        if self.current_blank > 0:
-            self.Q_used = int(self.current_blank > self.tau)
+            if not self.use_right_Q:
+                self.Q_used = int(self.current_blank > self.tau)
             self.current_state = 0 
             self.current_blank = 0
         else:
@@ -105,3 +106,4 @@ class TwoQAgent(QAgent):
         self.current_blank = 0
         self.Q_used = 1#int(self.rnd_state.rand() < 0.5)
         self.current_state = 0 #if self.Q_used else self.horizon + 2
+

@@ -13,10 +13,13 @@ class Simulator:
         self.env = env
         self.actions = actions
         
-    def _perform_single_step(self, agent : QAgent, pos : np.ndarray, time_idx : int, deterministic : bool = False):
+    def _perform_single_step(self, agent : QAgent, pos : np.ndarray, time_idx : int, deterministic : bool = False, use_right_Q : bool = False):
         a = agent.select_action(deterministic=deterministic)
-        pos, r, terminated = self.env.make_move(pos, self.actions[a])
+        pos, r, terminated = self.env.make_move(pos, self.actions[a % 4])
         time_idx = (time_idx + 1) % self.env.MAX_T
+        if use_right_Q and isinstance(agent, TwoQAgent):
+            agent.Q_used = int(self.env.compute_tb(pos, agent.s_thr) > agent.tau)
+
         obs = self.env.get_observation(pos, time_idx) if not terminated else -1.0
         s_prime = agent.update_state(obs)
         return pos, a, r, terminated, s_prime, time_idx
@@ -29,6 +32,7 @@ class Simulator:
                     num_episodes, # number of episodes
                     delta : int = 500, # size of the window used to compute the average cumulative reward per episode
                     seed : int = 12131415, # random seed
+                    use_right_Q : bool = False, # use right Q function in TwoQAgent
                     checkpoint_iters : int = 1000
                     ):
         cumulative_rewards, agent_speed, convergence, max_void_steps, num_steps = [], [], [], [], []
@@ -43,33 +47,15 @@ class Simulator:
             # Initialization
             agent.reset()
             pos = point_sampler()
-            
- #           if isinstance(agent, TwoQAgent):
-                # blanks = []
-                # non_voids = self.env.data[:, pos[0], pos[1]] > agent.s_thr
-                # init_idx = np.argmax(non_voids)
-                # b_size = 0
-                # blank_open = False
-                # for i in range(init_idx, self.env.data.shape[0]):
-                #     if non_voids[i] and not blank_open:
-                #         blank_open = True
-                #     elif non_voids[i] and blank_open:
-                #         if b_size > 0:
-                #             blanks.append(b_size)
-                #         b_size = 0
-                #     elif not non_voids[i]:
-                #         b_size +=1
-#                agent.Q_used = int(np.mean(blanks) > agent.tau)
-#                agent.current_blank = np.mean(blanks)
-#                agent.current_state = horizon + 2 if agent.Q_used else 0
-                    
-                    
 
             if pos[1] <= self.env.source_position[1] + self.env.source_radius or self.env.source_reached(pos):
                 continue
             init_positions.append(pos.copy())
             init_pos = pos.copy()
             time_idx = rnd_state.randint(0, self.env.MAX_T)
+            if use_right_Q and isinstance(agent, TwoQAgent):
+                agent.Q_used = int(self.env.compute_tb(pos, agent.s_thr) > agent.tau)
+                
             obs = self.env.get_observation(pos, time_idx)
             s = agent.update_state(obs) 
 
@@ -81,12 +67,11 @@ class Simulator:
                 pos, a, r, terminated, s_prime, time_idx = self._perform_single_step(agent, 
                                                                                   pos, 
                                                                                   time_idx, 
-                                                                                  deterministic = False)
-
+                                                                                  deterministic = False,
+                                                                                  use_right_Q = use_right_Q)
+                
                 c_reward += r * (agent.gamma**t) 
                 agent.update_q(s, a, s_prime, r)
-                
-#                print(agent.Q_used)
                 
                 void_steps = max(void_steps, agent.current_blank)
                 if s_prime == 0:
@@ -96,7 +81,6 @@ class Simulator:
                     break
                 s = s_prime
                 previous_blank = agent.current_blank
-#            print("-"*55)
             max_void_steps.append(void_steps)
             num_steps.append(t + 1)
             convergence.append(int(terminated))
@@ -116,12 +100,13 @@ class Simulator:
             agent.num_episodes += 1
         return cumulative_rewards, agent_speed, convergence, max_void_steps, num_steps, max_void_lengths, init_positions
 
-    def test_agent(self, agent : QAgent, test_points, time_slices, horizon : int, get_Q_used_map = False):
+    def test_agent(self, agent : QAgent, test_points, time_slices, horizon : int, get_Q_used_map = False, init_with_tb = False):
         failed_positions = []
         last_detections = []
         Q_last_detections = []
         results = []
         Q_used = {}
+        Q_used_list = [[] for _ in range(horizon + 1)]
         for time_slice in time_slices:
             iterator = tqdm(range(test_points.shape[0]))
             for pos_idx in iterator:
@@ -131,6 +116,21 @@ class Simulator:
                     continue
                 speed = 0.0
                 agent.reset()
+                if init_with_tb:
+                    tb = self.env.data[:, init_pos[0], init_pos[1]] > agent.s_thr
+                    count_zero = 0 
+                    avg_blank = []
+                    for k in range(0, len(tb)):
+                        if not tb[k]:
+                            count_zero +=1
+                        else:
+                            if count_zero > 0:
+                                avg_blank.append(count_zero)
+                            count_zero = 0
+                    if count_zero > 0:
+                        avg_blank.append(count_zero)
+                    agent.Q_used = int(np.mean(avg_blank) > agent.tau) #if len(avg_blank) > 0 else 1
+
                 time_idx = time_slice
                 obs = self.env.get_observation(init_pos, time_idx)
                 s = agent.update_state(obs) # update memory and compute olfactory state
@@ -146,11 +146,13 @@ class Simulator:
                         Q_used[str(pos)] = [agent.Q_used]
                     else:
                         Q_used[str(pos)].append(agent.Q_used)
+                Q_used_list[0].append(agent.Q_used)
                 for t in range(horizon):
                     pos, a, r, terminated, s_prime, time_idx = self._perform_single_step(agent, 
                                                                                   pos, 
                                                                                   time_idx, 
                                                                                   deterministic = True)
+                    Q_used_list[t + 1].append(agent.Q_used)
                     c_reward += r * (agent.gamma**t) #if t > 0 else r
                     if get_Q_used_map and 0 <= pos[0] < self.env.data.shape[1] and 0 <= pos[1] < self.env.data.shape[2]:
                         if str(pos) not in Q_used:
@@ -176,4 +178,5 @@ class Simulator:
                 results.append([init_pos[0], init_pos[1], time_slice, c_reward, speed, int(terminated), max_void_length])
         if not get_Q_used_map:
             Q_used = None
-        return results, failed_positions, last_detections, Q_last_detections, Q_used
+        return results, failed_positions, last_detections, Q_last_detections, Q_used, Q_used_list
+

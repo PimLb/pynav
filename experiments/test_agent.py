@@ -1,4 +1,3 @@
-import sys 
 import os
 import argparse as ap
 import numpy as np 
@@ -99,7 +98,7 @@ def test_agent(args):
             out_dir=f"{agent_dir}/Q_stored"
         )
 
-    else:
+    elif args.agent_type == 'two':
         agent = TwoQAgent(
             horizon=horizon,
             tau=args.tau,
@@ -111,10 +110,6 @@ def test_agent(args):
             out_dir=f"{agent_dir}/Q_stored"
         )
 
-        # if args.q_num is None:
-        #     agent.load_q(f"{agent_dir}/Q_stored/Qfun_1.npy", f"{agent_dir}/Q_stored/Qfun_2.npy")
-        # else:
-        #     agent.load_q(f"{agent_dir}/Q_stored/Qfun_{args.q_num}_1.npy", f"{agent_dir}/Q_stored/Qfun_{args.q_num}_2.npy")
         
     if args.q_num is None:
         agent.load_q(f"{agent_dir}/Q_stored/Qfun.npy")
@@ -125,11 +120,11 @@ def test_agent(args):
     
     test_points = np.transpose(np.nonzero(start_points))#.T
 
-    results, failed_positions, last_detections, Q_last_detections, Q_used = simulator.test_agent(agent, 
+    results, failed_positions, last_detections, Q_last_detections, Q_used, Q_used_list = simulator.test_agent(agent, 
                          test_points=test_points,
                          time_slices=[0, 100, 500, 1000],#range(data.shape[0]),
                          horizon=horizon,
-                         get_Q_used_map=args.agent_type=='two'
+                         get_Q_used_map=args.agent_type!='single'
                          )
     data[data == 0.0] = 1e-20
     
@@ -139,10 +134,18 @@ def test_agent(args):
     with open(f"{out_dir}/failed_init_positions.log" , 'w') as f:
         for i in range(len(failed_positions)):
             f.write("{},{}\n".format(failed_positions[i][0], failed_positions[i][1]))
+            f.flush()
+
+    with open(f"{out_dir}/Q_used_list.log" , 'w') as f:
+        for i in range(len(Q_used_list)):
+            hist, bin_edges = np.histogram(Q_used_list[i], bins=2)
+            f.write("{},{},{}\n".format(i,hist[0], hist[1]))
+            f.flush()
 
     with open(f"{out_dir}/failed_last_detections.log" , 'w') as f:
         for i in range(len(last_detections)):
             f.write("{},{},{}\n".format(last_detections[i][0], last_detections[i][1], Q_last_detections[i]))
+            f.flush()
 
     creward, speed, convergence = [],[], []
 
@@ -176,7 +179,6 @@ def test_agent(args):
         ax.imshow(Q_used_map, origin='lower')
         fig.savefig(f"{out_dir}/Q_used.pdf", bbox_inches='tight')
         plt.close(fig)
-#            f.write(f"{elem},{x},{t},{c_rew},{speed},{terminated}\n")
             
 
 
@@ -192,9 +194,11 @@ if __name__ == '__main__':
 
 
     # Experiment parameters
-    parser.add_argument("--agent_type", type=str, choices=['single', 'two'], default='single', help="Type of agent. If 'single' it uses a single Q matrix if 'two' it uses two Q")
+    parser.add_argument("--agent_type", type=str, choices=['single', 'two', 'multi', 'beta'], default='single', help="Type of agent. If 'single' it uses a single Q matrix if 'two' it uses two Q")
     parser.add_argument("--tau", type=int, default=1, help="Threshold for switching Q in TwoQAgent")
-    
+    parser.add_argument("--num_q", type=int, default=1, help='Number of Q tables for MultiQ agent')
+    parser.add_argument("--beta", type=float, default=0.1, help='Memory of beta agent')
+
     parser.add_argument('--q_num', type=int, default=None, help='Num of Q')
     
     args = parser.parse_args()
