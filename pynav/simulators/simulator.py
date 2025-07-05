@@ -22,7 +22,7 @@ class Simulator:
 
         obs = self.env.get_observation(pos, time_idx) if not terminated else -1.0
         s_prime = agent.update_state(obs)
-        return pos, a, r, terminated, s_prime, time_idx
+        return pos, a, r, terminated, s_prime, time_idx, obs
 
         
     def train_agent(self, 
@@ -64,7 +64,7 @@ class Simulator:
             max_void_length = agent.current_blank
             void_steps = agent.current_blank
             for t in range(horizon):
-                pos, a, r, terminated, s_prime, time_idx = self._perform_single_step(agent, 
+                pos, a, r, terminated, s_prime, time_idx, _ = self._perform_single_step(agent, 
                                                                                   pos, 
                                                                                   time_idx, 
                                                                                   deterministic = False,
@@ -138,6 +138,7 @@ class Simulator:
 #                source_pos = np.array([14.0, 0.0])
                 c_reward = 0.0
                 pos = init_pos.copy()
+                has_observed = obs > 0.0 
                 last_detection = None if s > 0.0 else init_pos.copy()
                 Q_last_detection = None if s > 0.0 else agent.Q_used #init_pos.copy()
                 max_void_length = agent.current_blank
@@ -148,18 +149,20 @@ class Simulator:
                         Q_used[str(pos)].append(agent.Q_used)
                 Q_used_list[0].append(agent.Q_used)
                 for t in range(horizon):
-                    pos, a, r, terminated, s_prime, time_idx = self._perform_single_step(agent, 
+                    pos, a, r, terminated, s_prime, time_idx, obs = self._perform_single_step(agent, 
                                                                                   pos, 
                                                                                   time_idx, 
                                                                                   deterministic = True)
                     Q_used_list[t + 1].append(agent.Q_used)
                     c_reward += r * (agent.gamma**t) #if t > 0 else r
+                    has_observed = has_observed or (obs > 0.0)
                     if get_Q_used_map and 0 <= pos[0] < self.env.data.shape[1] and 0 <= pos[1] < self.env.data.shape[2]:
                         if str(pos) not in Q_used:
                             Q_used[str(pos)] = [agent.Q_used]
                         else:
                             Q_used[str(pos)].append(agent.Q_used)
-                    if s_prime == 0.0:
+                    if has_observed and s_prime == 0.0:
+                        print("[--] observation at: ", pos, "time idx:", time_idx, obs)
                         last_detection = pos.copy()
                         Q_last_detection = agent.Q_used
                         max_void_length = max(max_void_length, agent.current_blank)
@@ -169,6 +172,7 @@ class Simulator:
                         speed = T_min / (t + 1)
                         break
                     s = s_prime
+                print("-----------------------------")
                 if not terminated:
                     failed_positions.append(init_pos.copy())
                     speed = 0.0
