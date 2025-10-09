@@ -46,13 +46,13 @@ class Simulator:
         for k in iterator:
             # Initialization
             agent.reset()
-            pos = point_sampler()
+            pos, time_idx = point_sampler()
 
             if pos[1] <= self.env.source_position[1] + self.env.source_radius or self.env.source_reached(pos):
                 continue
             init_positions.append(pos.copy())
             init_pos = pos.copy()
-            time_idx = rnd_state.randint(0, self.env.MAX_T)
+#            time_idx = rnd_state.randint(0, self.env.MAX_T)
             if use_right_Q and isinstance(agent, TwoQAgent):
                 agent.Q_used = int(self.env.compute_tb(pos, agent.s_thr) > agent.tau)
                 
