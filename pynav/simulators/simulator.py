@@ -100,7 +100,7 @@ class Simulator:
             agent.num_episodes += 1
         return cumulative_rewards, agent_speed, convergence, max_void_steps, num_steps, max_void_lengths, init_positions
 
-    def test_agent(self, agent : QAgent, test_points, time_slices, horizon : int, get_Q_used_map = False, init_with_tb = False):
+    def test_agent(self, agent : QAgent, test_points, time_slices, horizon : int, get_Q_used_map = False, init_with_tb = False , feasible_init = False):
         failed_positions = []
         last_detections = []
         Q_last_detections = []
@@ -111,7 +111,7 @@ class Simulator:
             iterator = tqdm(range(test_points.shape[0]))
             for pos_idx in iterator:
                 init_pos = test_points[pos_idx]
-                
+                                    
                 if init_pos[1] <= self.env.source_position[1] + self.env.source_radius or self.env.source_reached(init_pos):
                     continue
                 speed = 0.0

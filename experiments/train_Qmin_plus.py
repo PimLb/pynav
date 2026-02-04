@@ -164,13 +164,15 @@ def train_agent(args):
     # Apply the noise threshold to the data   
     data[data < n_thr] = 0.0
     
+    sampler_rnd_state = np.random.RandomState(seeds['sim_seed'])
     
     def sample_init_position():
         pos_idx = rnd_state.choice(range(start_points.shape[0]), 1, p=start_points)
         pos_y, pos_x = np.unravel_index(pos_idx, shape=(data.shape[1], data.shape[2]))
         pos = np.concatenate([pos_y, pos_x])
         pos = pos.astype(int)
-        return pos    
+        time_idx = sampler_rnd_state.randint(0, env.MAX_T)
+        return pos, time_idx
     
     # Create the environment and the agent
 

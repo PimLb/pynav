@@ -134,19 +134,23 @@ def train_agent(args):
     # where the data is above a certain threshold (the noise threshold of the sparsest environment)
     # and set to 0.0 the probability to sample initial conditions in the source region
     
-    if feasible_init == 0:
+    if feasible_init == 0 or feasible_init ==2:
         start_points = np.any(data > 7e-6, axis=0).astype(np.float64)
         start_points[:, :int(source_position[1] + source_radius)] = 0.0
         start_points /= np.sum(start_points)
         start_points = start_points.ravel()
 
-    else:
-        # TODO: SET INIT TIME S.T AGENT OBSERVE SOMETHING ABOVE THRESHOLD
+    elif feasible_init == 1:
+
         start_points = (data.copy() > n_thr).astype(np.float64) #np.any(data > n_thr, axis=0).astype(np.float64)
 
         start_points[:, :, :int(source_position[1] + source_radius)] = 0.0
         start_points = np.argwhere(start_points > 0.0)
-
+    elif feasible_init == 3:
+        start_points = np.any(data.copy() > n_thr, axis=0).astype(np.float64) #np.any(data > n_thr, axis=0).astype(np.float64
+        start_points[:, :int(source_position[1] + source_radius)] = 0.0
+        start_points /= np.sum(start_points)
+        start_points = start_points.ravel()
 
     # Apply the noise threshold to the data   
     data[data < n_thr] = 0.0
@@ -162,14 +166,21 @@ def train_agent(args):
     
     
     def sample_init_position():
-        if feasible_init == 0:
+        if feasible_init == 0 or feasible_init ==2 or feasible_init ==3:
                 
             pos_idx = rnd_state.choice(range(start_points.shape[0]), 1, p=start_points)
             pos_y, pos_x = np.unravel_index(pos_idx, shape=(data.shape[1], data.shape[2]))
             pos = np.concatenate([pos_y, pos_x])
             pos = pos.astype(int)
-            time_idx = sampler_rnd_state.randint(0, env.MAX_T)
+            if feasible_init == 2:
+                feasible_time_slices = data[:, pos[0], pos[1]] > 7e-6
+                prob_feasible_time_slices = feasible_time_slices.astype(np.float64) / np.sum(feasible_time_slices)
+                time_idx = sampler_rnd_state.choice(len(data[:, pos[0], pos[1]]), 1, p=prob_feasible_time_slices)[0]
+            else:
+                time_idx = sampler_rnd_state.randint(0, env.MAX_T)
             return pos, time_idx
+
+            
         position_time = start_points[rnd_state.choice(len(start_points))].copy().flatten()
 
         time_idx = int(position_time[0])
@@ -262,7 +273,7 @@ if __name__ == '__main__':
     parser.add_argument("--alpha_end", type=float, default=0.0001, help="Final alpha")
     parser.add_argument("--alpha_decay", type=float, default=2500000, help="Alpha decay")
     parser.add_argument("--checkpoint_iters", type=int, default=10000, help="Checkpoint iterations")
-    parser.add_argument("--feasible_init", type=int, choices=[0, 1], default=0, help='1 if initial positions are sampled only in feasible region, 0 if uniformly in the whole grid')
+    parser.add_argument("--feasible_init", type=int, choices=[0, 1, 2, 3], default=0, help='1 if initial positions are sampled such that are in the training cone and the first o_t = 1; 2 only if it is in the sparset cone and o_t = 1;  0 if uniformly in the whole grid')
 
     # Other parameters
     parser.add_argument("--base_seed", type=int, default=143125, help='Seed used by the agent for epsilon-greedy strategy')

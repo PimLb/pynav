@@ -61,6 +61,8 @@ def test_agent(args):
     n_thr = settings[args.test_setting]
     data = np.load(args.data_path)
     
+    feasible_init = int(args.feasible_init) == 1
+    
     
     agent_dir = f"{args.agent_path}/{args.agent_type}_Q/{args.training_setting}/agent_{args.agent_seed}"
     
@@ -75,6 +77,13 @@ def test_agent(args):
     
     os.makedirs(f"{out_dir}", exist_ok=True)
     
+    # if feasible_init:
+    #     start_points = (data.copy() > n_thr).astype(np.float64) #np.any(data > n_thr, axis=0).astype(np.float64)
+        
+    #     start_points[:, :, :int(source_position[1] + source_radius)] = 0.0
+    #     start_points = np.argwhere(start_points > 0.0)
+
+    # else:    
     start_points = np.any(data > 7e-6, axis=0).astype(np.float64)
     start_points[:, :3] = 0.0 # Set to 0.0 the probability to sample initial conditions in the source region
     
@@ -198,6 +207,7 @@ if __name__ == '__main__':
     parser.add_argument("--tau", type=int, default=1, help="Threshold for switching Q in TwoQAgent")
     parser.add_argument("--num_q", type=int, default=1, help='Number of Q tables for MultiQ agent')
     parser.add_argument("--beta", type=float, default=0.1, help='Memory of beta agent')
+    parser.add_argument("--feasible_init", type=int, choices=[0, 1], default=0, help='1 if initial positions are sampled only in feasible region, 0 if uniformly in the whole grid')
 
     parser.add_argument('--q_num', type=int, default=None, help='Num of Q')
     
