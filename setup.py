@@ -10,6 +10,6 @@ setup(
         'setuptools>=18.0'
     ],
     packages=find_packages(),
-    install_requires=['numpy'],
+    install_requires=['numpy', 'matplotlib', 'tqdm'],
     include_package_data=True,
 )
