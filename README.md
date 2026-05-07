@@ -27,4 +27,4 @@ The experiments were run using Python 3.10.13 and NumPy 1.26.
 
 ## :bar_chart: Dataset
 
-The dataset used to perform the experiments can be downloaded from Zenodo at the following link:
+The dataset used to perform the experiments can be downloaded from Zenodo at the following link: https://zenodo.org/records/20001730
