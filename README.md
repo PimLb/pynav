@@ -25,6 +25,8 @@ pip install .
 ```
 The experiments were run using Python 3.10.13 and NumPy 1.26.
 
+The code used to reproduce the POMDP experiments is available at [http://github.com/rheinonen/OlfactorySearch/tree/qlearning](http://github.com/rheinonen/OlfactorySearch/tree/qlearning).
+
 ## :bar_chart: Dataset
 
 The dataset used to perform the experiments can be downloaded from Zenodo at the following link: https://zenodo.org/records/20001730
