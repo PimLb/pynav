@@ -60,9 +60,12 @@ def plot_positions(data, position_lists, name, out_dir, Q_used = None):
 def test_agent(args):
     n_thr = settings[args.test_setting]
     data = np.load(args.data_path)
+        
+    out_dir = args.agent_path if args.out_path is None else args.out_path
     
+    out_dir += f"/two_single_Q/agent_{args.agent_seed}/tau_{args.tau}/test/{args.test_setting}"
     
-    out_dir = f"{args.agent_path}/two_single_Q/agent_{args.agent_seed}/tau_{args.tau}/test/{args.test_setting}"
+    #out_dir = f"{args.agent_path}/two_single_Q/agent_{args.agent_seed}/tau_{args.tau}/test/{args.test_setting}"
     
     Q_minus = np.load(f"{args.agent_path}/single_Q/dense/agent_{args.agent_seed}/Q_stored/Qfun.npy")
     Q_plus = np.load(f"{args.agent_path}/single_Q/sparser/agent_{args.agent_seed}/Q_stored/Qfun.npy")
@@ -170,8 +173,11 @@ if __name__ == '__main__':
 #    parser.add_argument("training_setting", type=str, choices=['dense', 'middle', 'sparse', 'sparser'], help='setting used to train the agent')
     parser.add_argument("test_setting", type=str, choices=['dense', 'middle', 'sparse', 'sparser'], help='setting used to test the agent')
     parser.add_argument("--agent_seed", type=int, default=143125, help='Seed used by the agent for epsilon-greedy strategy')
-    parser.add_argument("--agent_path", type=str, default='./results', help='output directory')
+    parser.add_argument("--agent_path", type=str, default='./results', help='Agent directory')
 
+    parser.add_argument("--out_path", type=str, default=None, help='output directory')
+    
+        
 
     # Experiment parameters
     parser.add_argument("--agent_type", type=str, choices=['single', 'two', 'multi', 'beta'], default='single', help="Type of agent. If 'single' it uses a single Q matrix if 'two' it uses two Q")

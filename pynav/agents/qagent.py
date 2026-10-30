@@ -1,7 +1,6 @@
 import numpy as np
 
 
-
 class QAgent:
     
     def __init__(self, 
@@ -64,7 +63,16 @@ class QAgent:
 
 class TwoQAgent(QAgent):
     
-    def __init__(self, horizon, tau=1, eps_greedy=lambda t: 0.3, gamma: float = 0.99, learning_rate=lambda t: 0.25, s_thr: float = 0.000003, seed: int = 12131415, use_right_Q = False, out_dir: str = "./"):
+    def __init__(self, horizon, 
+                 tau=1, 
+                 beta_tau = 0.0,
+                 eps_greedy=lambda t: 0.3, 
+                 gamma: float = 0.99, 
+                 learning_rate=lambda t: 0.25, 
+                 s_thr: float = 0.000003, 
+                 seed: int = 12131415, 
+                 use_right_Q = False, 
+                 out_dir: str = "./"):
         self.s_thr = s_thr
         self.gamma = gamma
         self.horizon = horizon
@@ -78,8 +86,10 @@ class TwoQAgent(QAgent):
         self.eps_greedy = eps_greedy
         self.current_state = 0
         self.current_blank = 0
-        self.tau = tau
+        self.init_tau = self.tau = tau
+        self.beta_tau = beta_tau
         self.use_right_Q = use_right_Q
+        self.n_iters = 1
     
     
     def update_state(self, raw_obs):
@@ -94,7 +104,12 @@ class TwoQAgent(QAgent):
         else:
             self.current_blank += 1            
             self.current_state = self.current_blank if self.Q_used == 0 else self.current_blank + self.horizon + 2
+#        self.tau = max((1 - self.beta_tau) * self.tau + self.beta_tau * self.current_blank, 1)
+        if self.beta_tau > 0.0:
+            self.tau = max(self.tau + (self.current_blank - self.tau)/self.n_iters,1)
+            self.n_iters += 1 
         return self.current_state
+
 
     def select_action(self, deterministic = False):
         if not deterministic and self.rnd_state.rand() < self.eps_greedy(self.num_episodes):
@@ -106,4 +121,5 @@ class TwoQAgent(QAgent):
         self.current_blank = 0
         self.Q_used = 1#int(self.rnd_state.rand() < 0.5)
         self.current_state = 0 #if self.Q_used else self.horizon + 2
-
+        self.tau = self.init_tau # reset tau to initial value
+        self.n_iters = 1

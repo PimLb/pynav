@@ -63,16 +63,24 @@ def test_agent(args):
     
     feasible_init = int(args.feasible_init) == 1
     
+    beta_tau = args.beta_tau
     
     agent_dir = f"{args.agent_path}/{args.agent_type}_Q/{args.training_setting}/agent_{args.agent_seed}"
     
-    if args.agent_type == 'two':
+    out_dir = f"{args.out_path}/{args.agent_type}_Q/{args.training_setting}/agent_{args.agent_seed}" if args.out_path is not None else agent_dir
+        
+    if args.agent_type == 'two' and beta_tau == 0.0:
         agent_dir += f"/tau_{args.tau}"
+        out_dir += f"/tau_{args.tau}"    
+    else:
+        agent_dir += f"/tau_{args.tau}_{beta_tau}"
+        out_dir += f"/tau_{args.tau}_{beta_tau}"    
+    
     
     if args.q_num is None:
-        out_dir = f"{agent_dir}/test/{args.test_setting}"
+        out_dir += f"/test/{args.test_setting}"
     else:
-        out_dir = f"{agent_dir}/test/{args.test_setting}/Q_{args.q_num}"
+        out_dir += f"/test/{args.test_setting}/Q_{args.q_num}"
     
     
     os.makedirs(f"{out_dir}", exist_ok=True)
@@ -199,7 +207,8 @@ if __name__ == '__main__':
     parser.add_argument("training_setting", type=str, choices=['dense', 'middle', 'sparse', 'sparser'], help='setting used to train the agent')
     parser.add_argument("test_setting", type=str, choices=['dense', 'middle', 'sparse', 'sparser'], help='setting used to test the agent')
     parser.add_argument("--agent_seed", type=int, default=143125, help='Seed used by the agent for epsilon-greedy strategy')
-    parser.add_argument("--agent_path", type=str, default='./results', help='output directory')
+    parser.add_argument("--agent_path", type=str, default='./results', help='Agent directory')
+    parser.add_argument("--out_path", type=str, default=None, help='output directory')
 
 
     # Experiment parameters
@@ -208,6 +217,8 @@ if __name__ == '__main__':
     parser.add_argument("--num_q", type=int, default=1, help='Number of Q tables for MultiQ agent')
     parser.add_argument("--beta", type=float, default=0.1, help='Memory of beta agent')
     parser.add_argument("--feasible_init", type=int, choices=[0, 1], default=0, help='1 if initial positions are sampled only in feasible region, 0 if uniformly in the whole grid')
+
+    parser.add_argument("--beta_tau", type=float, default=0.0, help="Beta parameter of EMA for tau")
 
     parser.add_argument('--q_num', type=int, default=None, help='Num of Q')
     

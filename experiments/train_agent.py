@@ -102,6 +102,8 @@ def train_agent(args):
     source_radius = args.source_radius
     feasible_init = args.feasible_init
     
+    beta_tau = args.beta_tau
+    
 #    print(source_position, source_radius)
 #    exit()
     
@@ -123,7 +125,7 @@ def train_agent(args):
     out_dir = f"{args.out_path}/{args.agent_type}_Q/{args.setting}/agent_{seeds['agent_seed']}"
     
     if args.agent_type == 'two':
-        out_dir += f"/tau_{args.tau}"
+        out_dir += f"/tau_{args.tau}_{args.beta_tau}"
         if args.right_Q == 1:
             out_dir += "/right_Q"
     
@@ -206,6 +208,7 @@ def train_agent(args):
             learning_rate= learning_rate,
             seed=seeds['agent_seed'],
             tau=args.tau,
+            beta_tau = beta_tau,
             use_right_Q=args.right_Q == 1,
             s_thr=n_thr,
             out_dir=f"{out_dir}/Q_stored"
@@ -259,8 +262,9 @@ if __name__ == '__main__':
     # Agent parameters
     parser.add_argument("--agent_velocity", type=int, default=1, help="Agent velocity")
     parser.add_argument("--agent_type", type=str, choices=['single', 'two'], default='single', help="Type of agent. If 'single' it uses a single Q matrix if 'two' it uses two Q")
-    parser.add_argument("--tau", type=int, default=1, help='Threshold for two Q agent')
+    parser.add_argument("--tau", type=int, default=1, help='Threshold for two Q agent (if beta_tau is not 0 it is the initial value)')
     parser.add_argument("--right_Q", type=int, choices=[0, 1], default=0, help='For 2Q agent, 1 if choose the Q according to <tb> 0 according to state')
+    parser.add_argument("--beta_tau", type=float, default=0.0, help='EMA coefficient for estimating tau using EMA of observations')
 
     # Training parameters
     parser.add_argument("--gamma", type=float, default=0.998, help="Discount factor")    

@@ -5,8 +5,6 @@ from pynav.agents import QAgent, TwoQAgent
 from pynav.environment import Environment
 
 
-
-
 class Simulator:
     
     def __init__(self, env : Environment, actions) -> None:
@@ -42,16 +40,27 @@ class Simulator:
         max_void_length = 0 
         max_void_lengths = np.zeros(num_episodes)
 
+#        tau_values = []
+
         iterator = tqdm(range(num_episodes))
         for k in iterator:
             # Initialization
+#            tau_values.append([])
+
             agent.reset()
             pos, time_idx = point_sampler()
+
+
 
             if pos[1] <= self.env.source_position[1] + self.env.source_radius or self.env.source_reached(pos):
                 continue
             init_positions.append(pos.copy())
             init_pos = pos.copy()
+
+#            if isinstance(agent, TwoQAgent):
+#                tau_values[-1].append(agent.tau)
+
+
 #            time_idx = rnd_state.randint(0, self.env.MAX_T)
             if use_right_Q and isinstance(agent, TwoQAgent):
                 agent.Q_used = int(self.env.compute_tb(pos, agent.s_thr) > agent.tau)
@@ -73,6 +82,8 @@ class Simulator:
                 c_reward += r * (agent.gamma**t) 
                 agent.update_q(s, a, s_prime, r)
                 
+#                if isinstance(agent, TwoQAgent):
+#                    tau_values[-1].append(agent.tau)
                 void_steps = max(void_steps, agent.current_blank)
                 if s_prime == 0:
                     max_void_length = max(max_void_length, previous_blank)
@@ -129,6 +140,8 @@ class Simulator:
                             count_zero = 0
                     if count_zero > 0:
                         avg_blank.append(count_zero)
+                        
+
                     agent.Q_used = int(np.mean(avg_blank) > agent.tau) #if len(avg_blank) > 0 else 1
 
                 time_idx = time_slice
